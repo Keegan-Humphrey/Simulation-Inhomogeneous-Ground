@@ -13,7 +13,7 @@ $ bash Compile
 
 New Directories:
 
-Source - contains altered DetectorConstruction.cc file, bash scripts for running the simulation, and Filing.py which determines the parameters of the simulation
+Source - contains the unaltered DetectorConstruction.cc file, bash scripts for running the simulation, Filing.py which determines the parameters of the simulation and alters DetectorConstruction.cc, and Triangles_logic.cc which was the first attempt at making a continuous landscape (The logic will be added to DetectorConstruction.cc once current issues are resolved).
 
 Executables - contains all compiled executables in the run, and a script to generate the macro file with a random 10 digit seed
 
