@@ -1,0 +1,19 @@
+#!/bin/bash 
+ 
+cd ../Executables 
+ 
+python Macro_Seed.py 
+./MuonsR_10m_0rad_25cm 
+mv RowData.out RDR_10m_0rad_25cm.out 
+mv RDR_10m_0rad_25cm.out ../RowData 
+ 
+python Macro_Seed.py 
+./MuonsS_10m_0rad_25cm 
+mv RowData.out RDS_10m_0rad_25cm.out 
+mv RDS_10m_0rad_25cm.out ../RowData 
+ 
+cd ../RowData 
+ 
+python ClusterAnalysis.py 
+ 
+python Plot.py
