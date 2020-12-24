@@ -100,7 +100,7 @@ def WriteSource(fName, Seperation, Depth, X, Y, Real):
     if Real:
         g_lines[219] = '\tG4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, %s, "UBox");\n'%(Ubox_Material)
         g_lines[220] = '\t//G4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, GroundMat, "UBox");\n'
-         
+        
         LandscapeList = ['\t \t /* Landscape Volume */ \n ', \
                         '\t G4VSolid* solidLandscape = new G4Box("Landscape", UD_World_sizeX, UD_World_sizeY, (UD_World_sizeZ - DetectorDepth) / 2.0); \n ', \
                         '\t G4LogicalVolume* logicLandscape = new G4LogicalVolume(solidLandscape, Vacuum, "Landscape"); \n ', \
@@ -152,7 +152,8 @@ def WriteSource(fName, Seperation, Depth, X, Y, Real):
                         '\t G4cout << G4endl << (UD_World_sizeZ - DetectorDepth) / 2.0 << " mm is the half height of the sky" << G4endl << G4endl; \n ' ]
         
         LandscapeList.reverse()
-        [g_lines.insert(371,Str) for Str in LandscapeList]
+        [g_lines.insert(371,Str) for Str in LandscapeList] # Added for testing purposes, this code will be added to DetectorConstruction.cc
+							   # once there is clear indication that it works as intended 
         
     else:
         g_lines[219] = '\t//G4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, %s, "UBox");\n'%(Ubox_Material)
