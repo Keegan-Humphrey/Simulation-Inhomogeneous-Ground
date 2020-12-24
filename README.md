@@ -17,7 +17,7 @@ Source - contains altered DetectorConstruction.cc file, bash scripts for running
 
 Executables - contains all compiled executables in the run
 
-owData - contains all RowData.out files for the run, and ClusterAnalysis.py and Plot.py which process the data and plots it respectively
+RowData - contains all RowData.out files for the run, as well as ClusterAnalysis.py and Plot.py which process the data and plots it respectively
 
 
 
