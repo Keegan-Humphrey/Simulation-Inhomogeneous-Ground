@@ -1,0 +1,26 @@
+//////
+//--------- Number of detector Layers and the number of bins are defined in the .hh file---------
+/////
+  // DETECTOR PARAMETERS
+  ZdivisionStereoLayers=30;
+  NStripsIn=40;
+  NStripsMid=41;
+  NStripsOut=40;
+  DetectorLength= 4.2*m;
+  DetectorInnerRadius=0.7998*m;
+  LayerInWidth=1.0*cm;
+  LayerMidWidth=1.0*cm;
+  LayerOutWidth=1.0*cm;
+  StereoAngleInner = -3.1133;
+  StereoAngleOuter = +2.9979;
+  
+  //--------- SOURCE PARAMETERS, AND CORRESPONDING PORJECTION
+  ProjectionMatrixType = 0;
+  SourceLengthScale = 300*m;
+  ProjectionPixelI = 10;
+  ProjectionPixelJ = 10;
+
+//--------- World Size- should be bigger then everything ---------
+  World_sizeX=250*m;
+  World_sizeY=250*m;
+  World_sizeZ=250*m;
