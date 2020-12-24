@@ -12,11 +12,11 @@ from joblib import load
 
 Events = load('Events.joblib')
 
-seed = ''.join(random.choices(string.digits, k=10)) + ' \n'
+seed = ''.join(random.choices(string.digits, k=8)) 
 
 f = open('Seed_History.txt','a+')
 
-f.write(seed)
+f.write(seed + ' \n')
 
 f.close()
 
