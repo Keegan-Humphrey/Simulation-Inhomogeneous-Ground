@@ -8,6 +8,8 @@ $ cd ./Source
 
 $ python Filing.py
 
+$ chmod 744 Compile
+
 $ ./Compile
 
 
