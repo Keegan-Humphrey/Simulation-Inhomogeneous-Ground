@@ -52,7 +52,7 @@ for (int i = 0; i < iaxis - 1; i++)
                 G4ThreeVector P2 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, Relief[i+signx][j+signy]-RMins[i][j]);
                 G4ThreeVector P3 = G4ThreeVector(signx * Pnt_Sep, 0, Relief[i+signx][j]-RMins[i][j]);
                 
-                //make_a_tet(P1, P2, P3);
+                make_a_tet(P1, P2, P3);
                 
                 n++;
             }
@@ -63,7 +63,7 @@ for (int i = 0; i < iaxis - 1; i++)
                 G4ThreeVector P2 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, Relief[i+signx][j+signy]-RMins[i][j]);
                 G4ThreeVector P3 = G4ThreeVector(0, signy * Pnt_Sep, Relief[i][j+signy]-RMins[i][j]);
                 
-                //make_a_tet(P1, P2, P3);
+                make_a_tet(P1, P2, P3);
                 
                 n++;
             }
@@ -75,14 +75,14 @@ for (int i = 0; i < iaxis - 1; i++)
                 G4ThreeVector P2 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, 0);
                 G4ThreeVector P3 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, Relief[i+signx][j+signy]-RMins[i][j]);
                 
-                //make_a_tet(P1, P2, P3);
+                make_a_tet(P1, P2, P3);
                 
                 // across and y adjascent
                 G4ThreeVector P4 = G4ThreeVector(0,signy * Pnt_Sep, 0);
                 G4ThreeVector P5 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, 0);
                 G4ThreeVector P6 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, Relief[i+signx][j+signy]-RMins[i][j]);
                 
-                //make_a_tet(P4, P5, P6);
+                make_a_tet(P4, P5, P6);
                 
                 n++;
             }
