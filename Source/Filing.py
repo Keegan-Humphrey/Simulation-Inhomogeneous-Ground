@@ -9,21 +9,38 @@ import numpy as np
 from joblib import dump, load
 import random
 import string
+from time import time, asctime
+
 
 
 
 #%%
 # Free parameters for simulation (and landscape geometry)
 
-Radius = [10] #[m] ~ distance from object
-#theta = np.round(np.pi / 2 * np.array([0, 1, 2, 3, 4]) / 10, 2) #[rad] polar angle
-Theta = [0]
-Seperation = [25] #[cm]
+
+alpha = [0] #[deg] x, y, z axis rotations
+beta = np.round([180 * mult * np.arccos(0.25) / np.pi for mult in [-1,1]], 1) #[deg]
+#beta = [0] #[deg]
+gamma = [0] #[deg]
+
+Radius = [20] #[m] ~ distance from origin
+
+#Theta = np.round(np.pi / 2 * np.array([0, 1, 2, 3, 4]) / 10, 2) #[rad] polar angle
+#Theta = np.round([0], 2)
+Theta = np.round(np.pi * beta / 180,1) #[rad]
+
+Seperation = [30] #[cm]
+#Seperation = [40] #[cm] seperation of the detector planes
 
 Events = int(5e5)
+#Events = int(5e6)
 dump(Events, 'Events.joblib')
 
-Ubox_Material = ['BMF', 'Air', 'GroundMat', 'Vacuum'][2]
+Ubox_Material = ['BMF', 'Air', 'GroundMat', 'Vacuum'][0]
+Ubox_dims = [1, 100, 0.5] # [m] (x, y, z) half dimensions
+Ubox_location = [[5,0,1],[-5,0,1],[10,0,1],[-10,0,1]] #[m] (x,y,z)
+
+Inhomogeneous = True # whether or not landscape is added
 Landscape_material = ['BMF', 'GroundMat'][1]
 
 
@@ -68,7 +85,7 @@ Shape_Z = np.shape(Z)
 #%%
 
 
-def WriteSource(fName, Seperation, Depth, X, Y, Real): 
+def WriteSource(fName, Seperation, Depth, X, Y, Real, Alpha, Beta, Gamma, boxloc): 
     '''
     Takes DetectorConstruction.cc file and creates new file with altered parameters.
     Writes in landscape geometry to be read from Relief.cc for Real files only
@@ -80,6 +97,8 @@ def WriteSource(fName, Seperation, Depth, X, Y, Real):
         X [float] - [cm] x position of detector
         Y [float] - [cm] y position of detector
         Real [bool] - True ==> Real, False ==> Sky
+        Alpha, Beta, Gamma [float] - [deg] Euler angles of detector
+        boxloc [float] - [m] location of the object
     
     ouput:
         None
@@ -96,11 +115,15 @@ def WriteSource(fName, Seperation, Depth, X, Y, Real):
     g_lines[60] = 'G4double UD_Det_centerX = {}*cm;\n'.format(X)
     g_lines[61] = 'G4double UD_Det_centerY = {}*cm;\n'.format(Y)
     
+    g_lines[63] = 'G4double UD_Det_alpha = {}*deg; \n'.format(Alpha)
+    g_lines[64] = 'G4double UD_Det_beta = {}*deg; \n'.format(Beta)
+    g_lines[65] = 'G4double UD_Det_gamma = {}*deg; \n'.format(Gamma)
     
-    if Real:
-        g_lines[219] = '\tG4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, %s, "UBox");\n'%(Ubox_Material)
-        g_lines[220] = '\t//G4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, GroundMat, "UBox");\n'
-        
+    
+    g_lines[217] = '\tG4double UBoxHight = %s*m; \n'%(Ubox_dims[2])
+    g_lines[218] = '\tG4VSolid* UBox = new G4Box("UBox", %s*m, %s*m, UBoxHight); \n'%(Ubox_dims[0], Ubox_dims[1])
+    
+    if Inhomogeneous:
         LandscapeList = ['\t \t /* Landscape Volume */ \n ', \
                         '\t G4VSolid* solidLandscape = new G4Box("Landscape", UD_World_sizeX, UD_World_sizeY, (UD_World_sizeZ - DetectorDepth) / 2.0); \n ', \
                         '\t G4LogicalVolume* logicLandscape = new G4LogicalVolume(solidLandscape, Vacuum, "Landscape"); \n ', \
@@ -152,12 +175,18 @@ def WriteSource(fName, Seperation, Depth, X, Y, Real):
                         '\t G4cout << G4endl << (UD_World_sizeZ - DetectorDepth) / 2.0 << " mm is the half height of the sky" << G4endl << G4endl; \n ' ]
         
         LandscapeList.reverse()
-        [g_lines.insert(371,Str) for Str in LandscapeList] # Added for testing purposes, this code will be added to DetectorConstruction.cc
-							   # once there is clear indication that it works as intended 
-        
+        [g_lines.insert(381,Str) for Str in LandscapeList]
+    
+    if Real:
+        g_lines[219] = '\tG4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, %s, "UBox");\n'%(Ubox_Material)
+        g_lines[220] = '\t//G4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, GroundMat, "UBox");\n'
+    
     else:
         g_lines[219] = '\t//G4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, %s, "UBox");\n'%(Ubox_Material)
         g_lines[220] = '\tG4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, GroundMat, "UBox");\n'
+    
+    g_lines[224] = '\tG4double UboxDepth = {} * m;'.format(boxloc[2])
+    g_lines[227] = '\tG4ThreeVector({} * m, {} * m, DetectorDepth / 2 - UBoxHight / 2 - UboxDepth),'.format(boxloc[0],boxloc[1])
     
     g_lines.insert(43, '#include "Relief.hh" \n \n')
     g_lines.insert(43, '#include "G4Tet.hh" \n \n')
@@ -270,7 +299,7 @@ def WriteHeader(Data):
     f.close()
     
 
-def WriteCommands(src_name, ex_name, dir_name, row_name): 
+def WriteCommands(src_name, ex_name, dir_name, row_name, date_dir): 
     '''
     Takes file parameters and generates scripts to compile and 
     to run them on the cluster. 
@@ -280,6 +309,7 @@ def WriteCommands(src_name, ex_name, dir_name, row_name):
         ex_name [str] - desired name of executable
         dir_name [str] - name of source file parent directory
         row_name [str] - name of RowData.out file
+        date_dir [str] - name of sub directory
         
     output:
         None
@@ -287,8 +317,8 @@ def WriteCommands(src_name, ex_name, dir_name, row_name):
     f = open('Compile','a') #'a' ==> append (so the fn can be iterated)
     g = open('Run','a')
     
-    Lines_f = ['mv {} ../src \n'.format(src_name), \
-            'cd ../src \n', \
+    Lines_f = ['mv {} ../../src \n'.format(src_name), \
+            'cd ../../src \n', \
             'mv {} DetectorConstruction.cc \n'.format(src_name), \
             'cd ../ \n', \
             'rm -r build \n', \
@@ -298,25 +328,53 @@ def WriteCommands(src_name, ex_name, dir_name, row_name):
             'cmake ../ \n', \
             'make \n', \
             'mv Muons {} \n'.format(ex_name), \
-            'mv {} ../Executables/ \n'.format(ex_name), \
+            'mv {} ../Executables \n'.format(ex_name), \
             'cd ../src \n', \
             'mv DetectorConstruction.cc {} \n'.format(src_name), \
-            'mv {} ../{} \n \n'.format(src_name, dir_name), \
-            'cd ../{} \n'.format(dir_name)]
+            'mv {} ../{}/{} \n \n'.format(src_name, dir_name,date_dir), \
+            'cd ../{}/{} \n'.format(dir_name,date_dir)]
             
     Lines_g = ['python Macro_Seed.py \n', \
                './{} \n'.format(ex_name), \
                'mv RowData.out {} \n'.format(row_name), \
-               'mv {} ../RowData \n \n'.format(row_name)]
+               'mv {} ../RowData/{} \n \n'.format(row_name,date_dir)]
     
     f.writelines(Lines_f)
     g.writelines(Lines_g)
     
     f.close()
     g.close()
-    
-    
 
+
+
+def Write_Description(cwd):
+    '''
+    Writes a .txt file to describe the data generated by the run.
+    To be put in the Training folder corresponding to the data. 
+    
+    input:
+        cwd [str] - name of current working directory
+        
+    output:
+        None
+    '''
+    f = open('DESCRIPTION.txt','w+')
+    
+    f.writelines(['The Following describes the data in ../{}/ \n\n\n'.format(cwd),
+                  'The distance from the origin is: \t {} m \n\n'.format(Radius),
+                  'The angle of the detector relative to the vertical is: \t {} rad \n\n'.format(*Theta),
+                  'The seperation of the detector planes is: \t {} cm \n\n'.format(Seperation),
+                  'The euler angles of the detector are: \t {}, {}, {} deg \n\n'.format(alpha,beta,gamma),
+                  'The number of events each run is: \t {} \n\n'.format(Events),
+                  'The material of the box is: \t {} \n\n'.format(Ubox_Material),
+                  'The dimensions of the box are: \t ({}, {}, {}) m \n\n'.format(*Ubox_dims),
+                  'The depth of the box is: \t {} m \n\n'.format(Ubox_location),
+                  'The inhomogeneous landscape {} simulated \n\n'.format(["wasn't",'was'][Inhomogeneous]),
+                  'The material of the landscape {} {} \n\n'.format(['would have been','is'][Inhomogeneous],Landscape_material)])
+        
+    f.close()
+    
+    
 
 def CreateSource(radius, theta, seperation):
     '''
@@ -344,15 +402,31 @@ def CreateSource(radius, theta, seperation):
 #    
 #    r.close()
     
+    
+    current_date_time = asctime().replace(' ','_').replace(':','-')
+    
+    dump(current_date_time,'time.joblib')
+
+    Write_Description(current_date_time)
+    
     f = open('Compile','w+')
     g = open('Run','w+')
     
     f.writelines(['#!/bin/bash \n \n', \
                   'mv Relief.cc ../src \n', \
                   'mv Relief.hh ../include \n \n', \
-                  'mv Parameters.joblib ../RowData \n \n', \
-                  'mv Events.joblib ../Executables \n \n'])
+                  'mkdir ../Training/{} \n'.format(current_date_time), \
+                  'mkdir ../Executables/{} \n'.format(current_date_time), \
+                  'mkdir ../RowData/{} \n'.format(current_date_time), \
+                  'mkdir {} \n \n'.format(current_date_time), \
+                  'mv DESCRIPTION.txt ../Training/{} \n \n'.format(current_date_time), \
+                  'mv DC*.cc ./{} \n'.format(current_date_time), \
+                  'cd ./{} \n'.format(current_date_time)])
+                  
     g.writelines(['#!/bin/bash \n \n', \
+                  'mv Parameters.joblib ../RowData \n \n', \
+                  'mv Events.joblib ../Executables \n \n', \
+                  'mv time.joblib ../RowData \n \n', \
                   'cd ../Executables \n \n']) #, \
                   #"alias python='/tomerv/SENSEI1/Keegan/Python-3.9.0/python' \n \n"])
     
@@ -364,28 +438,61 @@ def CreateSource(radius, theta, seperation):
     for r in radius:
         for t in theta:
             for sep in seperation:
-                WriteSource('DCR_{}m_{}rad_{}cm.cc'.format(r,t,sep), sep, round(np.cos(t)*r,2),round(np.sin(t)*r*100),0,True)
-                WriteSource('DCS_{}m_{}rad_{}cm.cc'.format(r,t,sep), sep, round(np.cos(t)*r,2),round(np.sin(t)*r*100),0,False)
-                
-                WriteCommands('DCR_{}m_{}rad_{}cm.cc'.format(r,t,sep), 'MuonsR_{}m_{}rad_{}cm'.format(r,t,sep), \
-                              'Source', 'RDR_{}m_{}rad_{}cm.out'.format(r,t,sep))
-                WriteCommands('DCS_{}m_{}rad_{}cm.cc'.format(r,t,sep), 'MuonsS_{}m_{}rad_{}cm'.format(r,t,sep), \
-                              'Source', 'RDS_{}m_{}rad_{}cm.out'.format(r,t,sep))
-                
-                Parameters.append([r,t,sep])
+                for a in alpha:
+                    for b in beta:
+                        for c in gamma:
+                            for loc in Ubox_location:
+                                
+                                Parameters.append(np.array([r,t,sep,a,b,c,loc],dtype=object))
+                                
+                                WriteSource('DCR_{}m_{}rad_{}cm_{}a_{}b_{}c_{}m.cc'.format(*Parameters[-1]).replace(' ',''), 
+                                            sep, 
+                                            np.round(np.cos(t)*r,2),
+                                            np.round(np.sin(t)*r*100),
+                                            0,
+                                            True,
+                                            a,b,c,loc)
+                                
+                                WriteSource('DCS_{}m_{}rad_{}cm_{}a_{}b_{}c_{}m.cc'.format(*Parameters[-1]).replace(' ',''),
+                                            sep, 
+                                            np.round(np.cos(t)*r,2),
+                                            np.round(np.sin(t)*r*100),
+                                            0,
+                                            False,
+                                            a,b,c,loc)
+                                
+                                WriteCommands('DCR_{}m_{}rad_{}cm_{}a_{}b_{}c_{}m.cc'.format(*Parameters[-1]).replace(' ',''),
+                                              'MuonsR_{}m_{}rad_{}cm_{}a_{}b_{}c_{}m'.format(*Parameters[-1]).replace(' ',''),
+                                              'Source', 
+                                              'RDR_{}m_{}rad_{}cm_{}a_{}b_{}c_{}m.out'.format(*Parameters[-1]).replace(' ',''),
+                                              current_date_time)
+                                              
+                                
+                                WriteCommands('DCS_{}m_{}rad_{}cm_{}a_{}b_{}c_{}m.cc'.format(*Parameters[-1]).replace(' ',''), 
+                                              'MuonsS_{}m_{}rad_{}cm_{}a_{}b_{}c_{}m'.format(*Parameters[-1]).replace(' ',''), 
+                                              'Source', 
+                                              'RDS_{}m_{}rad_{}cm_{}a_{}b_{}c_{}m.out'.format(*Parameters[-1]).replace(' ',''),
+                                              current_date_time)
+                                
+                                #r,t,sep,a,b,c,dep),
        
     f = open('Compile','a')
     g = open('Run','a')
     
-    f.write('bash Run') #Chains together the command scripts, useful for batch jobs
-    g.writelines(['cd ../RowData \n \n', \
+    f.writelines(['cd ../ \n', \
+                  #'cd ../Source \n',
+                  'bash Run']) #Chains together the command scripts, useful for batch jobs
+        
+    g.writelines(['mv Muons* ./{} \n'.format(current_date_time), \
+                  'cd ../RowData \n \n', \
                   'python ClusterAnalysis.py \n \n', \
-                  'python Plot.py'])
+                  'mv ./{}/RD*.joblib ../Training/{} \n \n'.format(current_date_time,current_date_time)])
+                  #'python Plot.py'])
     
     f.close()    
     g.close()
     
-    dump(np.array(Parameters),'Parameters.joblib')
+    dump(Parameters,'Parameters.joblib')
     
     
     
