@@ -9,14 +9,15 @@ Created on Wed Dec 23 20:16:59 2020
 import random
 import string
 from joblib import load
+from time import asctime
 
 Events = load('Events.joblib')
 
-seed = ''.join(random.choices(string.digits, k=8)) 
+seed = ''.join(random.choices(string.digits, k=10))
 
 f = open('Seed_History.txt','a+')
 
-f.write(seed + ' \n')
+f.writelines([seed+'\t - \t'+asctime()+'\n \n'])
 
 f.close()
 
