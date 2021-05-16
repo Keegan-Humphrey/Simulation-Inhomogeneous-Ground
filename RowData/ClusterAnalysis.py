@@ -41,7 +41,7 @@ TriggerWidth = 1                                                #[cm]
 #---------------------
 # Volume Specs
 #---------------------
-ImageLayerSize = [1000, 1000]                                   #[cm] Dimensions of the image layers 
+ImageLayerSize = [1500, 1500]                                   #[cm] Dimensions of the image layers
 
 
 #---------------------
@@ -64,7 +64,13 @@ SigFrac = 0.2                                                   #Percent of low 
 Iterate = False                                               #True ==> analysis will be done on every layer given by ProjectionPixel[2]
 
 
+#---------------------
+# Readout Error
+#---------------------     
+STD = 0 #[MeV]                                             # Standard deviation of added gaussian
+
 #%%
+
 # --------------------------------- Translation of Gilad's Code -----------------------------------------
 
 
@@ -100,6 +106,9 @@ def ReadRowDataFileFastest(FileName,DetectorPos): #must use 'path/Filename' (inc
     for i in range(n):
         RowData['DateAndTime'].append(G[EventWordInd[i]+2])   
        
+    #Error = np.random.normal(scale=STD, size=(n,4))
+    #err = np.random.normal(scale)
+    
     for i in range(n-1): # -1 to avoid error from length of last event 
         Bar = []
         Length = []
@@ -110,7 +119,8 @@ def ReadRowDataFileFastest(FileName,DetectorPos): #must use 'path/Filename' (inc
                 Length.append(G[EventWordInd[i]+l][4:])
     
         BarFloat = np.float_(Bar).tolist() #Converts string elements to float
-        LengthFloat = np.float_(Length).tolist()
+        LengthFloat = (np.float_(np.array(Length))+np.random.normal(scale=STD,size=len(Length))).tolist()
+        #LengthFloat = (np.float_(np.array(Length))).tolist()
         
         RowData['BarsReadout'][0].append(BarFloat)
         RowData['BarsReadout'][1].append(LengthFloat)
@@ -571,20 +581,22 @@ def ReadDataFiles():
     Parameters = load('Parameters.joblib')
     Dir_name = load('time.joblib')
     
-    RealFiles = [Dir_name+'/'+'RDR_{}m_{}rad_{}cm_{}a_{}b_{}c_{}m.out'.format(*par).replace(' ','') for par in Parameters]
-    SkyFiles = [Dir_name+'/'+'RDS_{}m_{}rad_{}cm_{}a_{}b_{}c_{}m.out'.format(*par).replace(' ','') for par in Parameters] #int(par[0]),par[1],int(par[2])
-    ZPositions = [round(np.cos(par[1])*par[0]*100,2) for par in Parameters] #[cm]
-    Seperations = [par[2] for par in Parameters]
-    Shape = np.shape(Parameters)
+#    RealFiles = [Dir_name+'/'+'RDR_{}cm_{}m_{}cm_{}a_{}b_{}c_{}m.out'.format(*par).replace(' ','') for par in Parameters]
+#    SkyFiles = [Dir_name+'/'+'RDS_{}cm_{}m_{}cm_{}a_{}b_{}c_{}m.out'.format(*par).replace(' ','') for par in Parameters] #int(par[0]),par[1],int(par[2])
+#    ZPositions = [par[1] for par in Parameters] #[m]
+#    Seperations = [par[2] for par in Parameters]
+#    Shape = np.shape(Parameters)
+#
+    global names
+    names = [filename[filename.find('/')+4:] for filename in glob.iglob('{}/RDR*.out'.format(Dir_name), recursive=True)]
     
-#    names = [filename[3:] for filename in glob.iglob('RDR*.out', recursive=True)]
-#    RealFiles = ['RDR'+name for name in names] 
-#    SkyFiles = ['RDS'+name for name in names] 
-#    ZPositions = [float(names[i][1:names[i].find('m_')]) for i in range(len(names))]
-#    Seperations = [float(names[i][names[i].find('d_')+2:names[i].find('cm_')]) for i in range(len(names))]
-#    Shape = [len(names)]
-#        
-#    
+    RealFiles = [Dir_name+'/'+'RDR'+name for name in names]
+    SkyFiles = [Dir_name+'/'+'RDS'+name for name in names]
+    ZPositions = [float(names[0].split('m_')[1]) for i in range(len(names))]
+    Seperations = [float(names[i].split('cm')[1][-2:]) for i in range(len(names))]
+    Shape = [len(names)]
+        
+    
     XPositions = np.zeros(Shape[0]) # centres images
     #XPositions = [round(np.sin(par[1])*par[0]*100) for par in Parameters] #[cm]
     YPositions = np.zeros(Shape[0])
@@ -643,13 +655,12 @@ def ReadDataFiles():
 
 def ReadFile(RealFile, SkyFile, Position, Seperation):
     
-        RDSky = ReadRowDataFileFastest(RealFile, Position)
+#        RDSky = ReadRowDataFileFastest(RealFile, Position)
+#        DCS = PazAnalysis(RDSky,Seperation,Iterate,Position[2], ImageLayers)
+#        dump(DCS,SkyFile[:SkyFile.find('.out')]+'.joblib')
+#
         RDReal = ReadRowDataFileFastest(SkyFile, Position)
-    
-        DCS = PazAnalysis(RDSky,Seperation,Iterate,Position[2], ImageLayers) 
         DCR = PazAnalysis(RDReal,Seperation,Iterate,Position[2],ImageLayers)
-        
-        dump(DCS,SkyFile[:SkyFile.find('.out')]+'.joblib')
         dump(DCR,RealFile[:RealFile.find('.out')]+'.joblib')
 
 #%%           
@@ -663,34 +674,34 @@ def ReadFile(RealFile, SkyFile, Position, Seperation):
 # and estimates of the object sizes and shapes visually
 #-----------------------------------------------------------------
 
+if __name__ == '__main__':
+    ReadDictionary, RowDictionary = ReadDataFiles()
 
-ReadDictionary, RowDictionary = ReadDataFiles()
+#    ReadFile('Real','Sky',[0,0,3000], 25)
 
-#ReadFile('big_real.out','big_sky.out',[0,0,2000], 25)
+    #dump(ReadDictionary,'ReadDictionary.joblib')
+    #dump(RowDictionary,'RowDictionary.joblib')
+    #ReadDictionary = load('ReadDictionary.joblib')
 
-#dump(ReadDictionary,'ReadDictionary.joblib')
-#dump(RowDictionary,'RowDictionary.joblib')
-#ReadDictionary = load('ReadDictionary.joblib')
+    #ClusterDictionary  = Cluster(ReadDictionary)
 
-#ClusterDictionary  = Cluster(ReadDictionary) 
+    #ClustError = [ResolveError(ClusterDictionary['Cluster'][i]['Filled Array']) for i in range(ReadDictionary['Length'])]
+    #FFTError = [ResolveError(ClusterDictionary['FFT Cluster'][i]['Filled Array']) for i in range(ReadDictionary['Length'])]
 
-#ClustError = [ResolveError(ClusterDictionary['Cluster'][i]['Filled Array']) for i in range(ReadDictionary['Length'])] 
-#FFTError = [ResolveError(ClusterDictionary['FFT Cluster'][i]['Filled Array']) for i in range(ReadDictionary['Length'])]
+    #dump(ReadDictionary['Sky Count List'],'Sky_Arrays.joblib')
+    #dump(ReadDictionary['Real Count List'],'Real_Arrays.joblib')
+    #dump(ClusterDictionary,'ClusterDict.joblib')
+    #dump(SubCounts,'SubCounts.joblib')
+    #dump(np.array([ClustError,FFTError]),'Error.joblib')
 
-#dump(ReadDictionary['Sky Count List'],'Sky_Arrays.joblib')
-#dump(ReadDictionary['Real Count List'],'Real_Arrays.joblib')
-#dump(ClusterDictionary,'ClusterDict.joblib')
-#dump(SubCounts,'SubCounts.joblib')
-#dump(np.array([ClustError,FFTError]),'Error.joblib')
-
-###change to only run on cluster layer specified by objdepth etc..
+    ###change to only run on cluster layer specified by objdepth etc..
 
 #--------------------------------------------------------------------------------------------
 
 
 
-tictoc = np.round(time(),1) - begin_time
+tictoc = time() - begin_time
 
-print('The total runtime of the analysis was: {} s'.format(tictoc))
+print('The total runtime of the analysis was: {:.02g} s'.format(tictoc))
 
 #print('The total runtime of the simulation was: {} s'.format(load('time.joblib')))

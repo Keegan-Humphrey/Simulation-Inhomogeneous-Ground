@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
 from joblib import load
 import numpy as np
+import glob
+import os
 
-def PlotQuick(Data, ThreeD):   
+def PlotQuick(Data, ThreeD, Title=None):   
     #Expects Boolean value for ThreeD
     
     #--------------------------------------------------------------------
@@ -14,7 +16,7 @@ def PlotQuick(Data, ThreeD):
         fig = plt.figure(figsize=(15,15))
         ax = fig.add_subplot(1,1,1)
         
-        #ax.set_title('PazVsReal')
+        ax.set_title(Title)
         plt.imshow(Data, alpha = 0.5)
         
         ax.get_xaxis().set_visible(False)
@@ -35,17 +37,25 @@ def PlotQuick(Data, ThreeD):
     else:
         PlotQuick2D(Data)
 
-#Dict = load('ReadDictionary.joblib')
+if __name__ == '__main__':
+    Dir = load('time.joblib')
 
-sky = load('Sky_Arrays.joblib')
-real = load('Real_Arrays.joblib')
+    Directory = os.getcwd() + '/' + Dir + '/'
 
-#PlotQuick(Dict['Subtracted Count List'][0], Dict['Iterate'])
+    print(Directory)
 
-DCdatPlus = (sky[0]-real[0])
-#DCdatPlus = (real[0]-sky[0])
-DCdatPlus[DCdatPlus < 0] = 0
+    names = [filename[filename.find('RDR')+3:] for filename in glob.iglob(Directory+'RDR*.joblib', recursive=True)]
+        
 
-PlotQuick(sky[0], True)
-PlotQuick(real[0], True)
-PlotQuick(DCdatPlus, True)
+    for i in range(len(names)):
+        sky = np.array(load(Directory + 'RDS' + names[i]), dtype=int)
+        real = np.array(load(Directory + 'RDR' + names[i]), dtype=int)
+        
+        DCdatPlus = (real-sky)
+        #DCdatPlus = (sky-real)
+        DCdatPlus[DCdatPlus < 0] = 0
+        
+        for j in range(np.shape(sky)[2]):
+            PlotQuick(sky[:,:,j], False, 'RDS'+names[i])
+            PlotQuick(real[:,:,j], False, 'RDR'+names[i])
+            PlotQuick(DCdatPlus[:,:,j], False, 'DCR'+names[i])
