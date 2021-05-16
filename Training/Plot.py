@@ -3,8 +3,9 @@ from joblib import load
 import numpy as np
 import glob
 import os
+from scipy import ndimage
 
-def PlotQuick(Data, ThreeD, Title):   
+def PlotQuick(Data, ThreeD, Title, Save):   
     #Expects Boolean value for ThreeD
     
     #--------------------------------------------------------------------
@@ -25,8 +26,11 @@ def PlotQuick(Data, ThreeD, Title):
         ax.set_frame_on(False)
         plt.colorbar(orientation='vertical')
         
+        if Save:
+            plt.savefig(Title.replace('.joblib','.png'))
+            
         plt.show()
-   
+        
     
     if ThreeD == True:
         Shape = np.shape(Data)
@@ -37,32 +41,42 @@ def PlotQuick(Data, ThreeD, Title):
     else:
         PlotQuick2D(Data)
 
-#Dict = load('ReadDictionary.joblib')
 
-Directory = os.getcwd() + '/Tue_Jan_26_09-44-54_2021/' #load('time.joblib')
+save = False
+
+Dir = load('time.joblib') #'Sat_Mar_13_09-50-39_2021/error = 0 mev'
+#Dir = 'Fri_Mar_12_22-36-06_2021'
+#Dir = 'Sun_Feb_14_20-16-48_2021'
+
+Directory = os.getcwd() + '/' + Dir + '/' #load('time.joblib')
 
 names = [filename[filename.find('RDR')+3:] for filename in glob.iglob(Directory+'RDR*.joblib', recursive=True)]
-    
 
-#names = [filename[3:] for filename in glob.iglob('RDR*.joblib', recursive=True)]
-#SkyFiles = [filename for filename in glob.iglob('RDS*.joblib', recursive=True)]
-
-#names = ['_30m_0.63rad_25cm.joblib']
-   
-#sky = load('Sky_Arrays.joblib')
-#real = load('Real_Arrays.joblib')
-
-#PlotQuick(Dict['Subtracted Count List'][0], Dict['Iterate'])
 
 for i in range(len(names)):
-    sky = np.array(load(Directory + 'RDR' + names[i]), dtype=int)
-    real = np.array(load(Directory + 'RDS' + names[i]), dtype=int)
     
-    #DCdatPlus = (real-sky)
-    DCdatPlus = (sky-real)
-    DCdatPlus[DCdatPlus < 0] = 0
-    
-    for j in range(np.shape(sky)[2]):
-        PlotQuick(sky[:,:,j], False, 'RDS'+names[i])
-        PlotQuick(real[:,:,j], False, 'RDR'+names[i])
-        PlotQuick(DCdatPlus[:,:,j], False, 'DCR'+names[i])
+    for k in range(1):
+        sky = np.array(load(Directory + 'RDR' + names[i]), dtype=int)
+        real = np.array(load(Directory + 'RDS' + names[i]), dtype=int)
+        
+        sky = sky / np.max(sky)
+        real = real / np.max(real)
+        
+        if k == 1:
+            sky = ndimage.gaussian_filter(sky,1)
+            real = ndimage.gaussian_filter(real,1)
+        
+        DCdatPlus = (real-sky)
+#        DCdatPlus = (sky-real)
+        DCdatPlus[DCdatPlus < 0] = 0
+        
+        for j in range(1): #range(np.shape(sky)[2]):
+            PlotQuick(sky[:,:,j], False, 'RDS'+names[i],save)
+            PlotQuick(real[:,:,j], False, 'RDR'+names[i],save)
+            PlotQuick(DCdatPlus[:,:,j], False, 'DCR'+names[i],save)
+
+        if k == 1:
+            print('denoised')
+            
+        else:
+            print('noisy')
