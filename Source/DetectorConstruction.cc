@@ -53,16 +53,16 @@ G4double UD_Det_planes_seperation = 25*cm;
 G4double BarWidth = 32 * mm;
 G4double BarHight = 17 * mm;
 G4double BarDepth = 40 * cm;
-G4double nBars = 23;
+G4double nBars = 27;
 //G4double Trigger_size = (std::max(BarDepth, (nBars - 1)*BarWidth / 2)) + 5 * cm;
 G4double Trigger_size = (std::max(BarDepth, (nBars - 1)*BarWidth / 2)) ;
 G4double Trigger_width = 1 * cm;
-G4double DetectorDepth = 40.0*m;
-G4double UD_Det_centerX = 0*m;
-G4double UD_Det_centerY = 0*m;
+G4double DetectorDepth = 5.0*m;
+G4double UD_Det_centerX = 0*cm;
+G4double UD_Det_centerY = 0*cm;
 G4double UD_Det_centerZ = Trigger_width + 2 * BarHight + UD_Det_planes_seperation / 2;
 G4double UD_Det_alpha = 0*deg;
-G4double UD_Det_beta = 0*deg;
+G4double UD_Det_beta = -22.5*deg;
 G4double UD_Det_gamma = 0*deg;
 
 extern std::vector<G4double> Iaxis;
@@ -104,6 +104,19 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	G4double density, abundance, fractionmass;
 	G4int nel, ncomponents, i;
 	G4int natoms;
+
+
+	// IMAGING THE USER PARAMETERS (STATIC - EXTERNAL, SHARED BY ALL PARTS OF GEANT4) 
+	// WHICH COME FROM THE CARDIN INTO THE INNER PARAMETERS OF DETECTOR
+	//G4cout << "DetectorConstruction::World_sizeX = " << UD_World_sizeX << G4endl;
+	//G4cout << "DetectorConstruction::World_sizeY = " << UD_World_sizeY << G4endl;
+	//G4cout << "DetectorConstruction::World_sizeZ = " << UD_World_sizeZ << G4endl;
+	//G4cout << "DetectorConstruction::UD_Det_alpha = " << UD_Det_alpha << G4endl;
+	//G4cout << "DetectorConstruction::UD_Det_beta = " << UD_Det_beta << G4endl;
+	//G4cout << "DetectorConstruction::UD_Det_gamma = " << UD_Det_gamma << G4endl;
+	//G4cout << "DetectorConstruction::UD_Det_planes_width = " << UD_Det_planes_width << G4endl;
+	//G4cout << "DetectorConstruction::UD_Det_planes_size = " << UD_Det_planes_size << G4endl;
+	//G4cout << "DetectorConstruction::UD_Det_planes_seperation = " << UD_Det_planes_seperation << G4endl;
 
 
 	G4NistManager* nist = G4NistManager::Instance();
@@ -150,8 +163,6 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	G4Material* BMF = new G4Material("BMF", 10000*g / cm3, ncomponents = 1);
 	BMF->AddElement(Ca, natoms = 1);
 	
-	//POLYSTYRENE
-	G4Material* POLYSTYRENE = nist->FindOrBuildMaterial("G4_POLYSTYRENE");
 	 
 	
 	G4cout << G4endl << "The materials defined are : " << G4endl << G4endl;
@@ -161,8 +172,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////
 	  //--------- Materials of the principal geometrical components (solids)  ---------
-	//DetMatter = Delrin;  //amplifier Matter
-	DetMatter = POLYSTYRENE;
+	DetMatter = Delrin;  //amplifier Matter
 	////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -204,8 +214,8 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 
 	/* HOMOGENEUOUS GROUND */
 	G4VSolid* solidGround = new G4Box("HomoGround", UD_World_sizeX, UD_World_sizeY, DetectorDepth / 2);
-	//G4LogicalVolume* logicGround = new G4LogicalVolume(solidGround, GroundMat, "HomoGround");
 	G4LogicalVolume* logicGround = new G4LogicalVolume(solidGround, GroundMat, "HomoGround");
+	//G4LogicalVolume* logicGround = new G4LogicalVolume(solidGround, Vacuum, "HomoGround");
 	new G4PVPlacement(0,               // no rotation
 		G4ThreeVector(0.0, 0.0, DetectorDepth / 2.0), //origin
 		logicGround,
@@ -214,40 +224,22 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 		false,           // no boolean operations
 		0);              // copy number   		                                 
 
-	/* U Box */
+	/* U Box that i added */
 	G4double UBoxHight = 2 * m;
-    G4VSolid* UBox = new G4Box("UBox", 100*m, 0.5*m, UBoxHight/2);
-	//G4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, Air, "UBox");
+	G4VSolid* UBox = new G4Box("UBox", 0.5*m, 50*m, UBoxHight/2);
+	//G4VSolid* UBox = new G4Box("UBox", 1*m, 1*m, UBoxHight);
+	G4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, Air, "UBox");
 	//G4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, GroundMat, "UBox");
 	//G4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, BMF, "UBox");
 	//G4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, Vacuum, "UBox");
-    
-    G4double UboxDepth = 0 * m;
 	new G4PVPlacement(0,               // no rotation
-		//G4ThreeVector(0.0, 0.0, DetectorDepth / 2 - UBoxHight / 2), //origin
-		G4ThreeVector(0.0, 0.0, DetectorDepth / 2 - UBoxHight / 2 - UboxDepth), //origin
+                      G4ThreeVector(2 * m, 0.0, DetectorDepth / 2 - UBoxHight / 2), //origin
+		      //G4ThreeVector(0.0, 2 * m, 3 * UBoxHight - UBoxHight / 2), //origin
 		UBoxLogicVolume,
 		"UBox",         // its name
 		logicGround,  // its mother  volume
 		false,           // no boolean operations
 		0);
-
-
-	/* myTorus */
-	//G4double myTorusHight = 1 * m;
-	//G4VSolid* myTorus = new G4Tubs("myTorus", 1 * m, 2 * m, myTorusHight / 2, 0, twopi);
-	//G4LogicalVolume* myTorusLogicVolume = new G4LogicalVolume(myTorus, Air, "myTorus");
-	//G4LogicalVolume* myTorusLogicVolume = new G4LogicalVolume(myTorus, GroundMat, "myTorus");
-	//G4LogicalVolume* myTorusLogicVolume = new G4LogicalVolume(myTorus, BMF, "myTorus");
-	//G4LogicalVolume* myTorusLogicVolume = new G4LogicalVolume(myTorus, Vacuum, "myTorus");
-	//new G4PVPlacement(0,               // no rotation
-	//	G4ThreeVector(0.0, 10 * m, DetectorDepth / 2 - myTorusHight / 2 - 20 * m),
-	//	myTorusLogicVolume,
-	//	"myTorus",         // its name
-	//	logicGround,  // its mother  volume
-	//	false,           // no boolean operations
-	//	0);
-	
 
 	//    DETECTOR CONTAINER - Air
 	//G4double Detector_container_height = 2 * UD_Det_planes_width + UD_Det_planes_seperation;
@@ -256,18 +248,21 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	G4VSolid* solid_Detector_container = new G4Box("Det_container", Detector_container_width / 2.0, Detector_container_width / 2.0, Detector_container_height / 2.0);
 	G4LogicalVolume* logic_Detector_container = new G4LogicalVolume(solid_Detector_container, Vacuum, "Det_container");
 	G4ThreeVector Detector_container_center = G4ThreeVector(UD_Det_centerX, UD_Det_centerY, -DetectorDepth / 2.0 + Detector_container_height / 2);
-	/*G4RotationMatrix Detector_container_rotm = G4RotationMatrix();
-	Detector_container_rotm.rotateX(UD_Det_alpha);
-	Detector_container_rotm.rotateY(UD_Det_beta);
-	Detector_container_rotm.rotateZ(UD_Det_gamma);
-	G4Transform3D transform = G4Transform3D(Detector_container_rotm, Detector_container_center);*/
-	new G4PVPlacement(0,
-		Detector_container_center,
-		logic_Detector_container,      // its logical volume
-		"Det_container",         // its name
-		logicGround,// its mother  volume
-		false,           // no boolean operations
-		0);              // copy number
+	
+    /*Rotate the Detector*/
+    G4RotationMatrix* transform = new G4RotationMatrix();
+    transform->rotateX(UD_Det_alpha);
+    transform->rotateY(UD_Det_beta);
+    transform->rotateZ(UD_Det_gamma);
+    
+    //else 0, for transform
+    new G4PVPlacement(transform,
+        Detector_container_center,
+        logic_Detector_container,      // its logical volume
+        "Det_container",         // its name
+        logicGround,// its mother  volume
+        false,           // no boolean operations
+        0);              // copy number
 
 	G4VSensitiveDetector* WC_Det = new Strip_detector(SDname = "Wires_Chamber");
 	SDman->AddNewDetector(WC_Det);
@@ -367,9 +362,192 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	}
 	logic_lower_plane->SetSensitiveDetector(WC_Det);
 	
-    
-    
-    
+
+	//using namespace RData;
+    for (int i = 0; i < iaxis - 1; i++)
+    {
+        //using namespace RData;
+
+        for (int j = 0; j < jaxis - 1; j++)
+        {
+            
+            // Makes boxes between four relief data points (above homogeneous ground),
+            // takes height to be the lowest of the four (RMins[i][j])
+            if (RMins[i][j] > 0.0*m)
+            {
+                G4VSolid* RBox = new G4Box("RBox", Pnt_Sep/2, Pnt_Sep/2, RMins[i][j]/2);
+                G4LogicalVolume* RBoxLogicVolume = new G4LogicalVolume(RBox, GroundMat, "RBox");
+                new G4PVPlacement(0,               // no rotation
+                        G4ThreeVector((1-iaxis) * Pnt_Sep /2 + Pnt_Sep * i,(1-jaxis) * Pnt_Sep /2 + Pnt_Sep * j, DetectorDepth + RMins[i][j]/2),
+                        RBoxLogicVolume,
+                        "RBox",         // its name
+                        logicWorld,  // its mother  volume
+                        false,           // no boolean operations
+                        0);
+            }
+            
+            //////////////
+            // Makes surface continuous by placing tetraheadra on top of each box
+            auto make_tets = [&](int anchorx, int anchory, double signx, double signy)
+            {
+                // anchorx, anchory - indices of the anchor point (minima of the adjacent data points)
+                // signx, signy - (anchorx, anchory > i,j) ==> +1.0, else -1.0
+                //              - relative direction of the other data points from anchor
+                
+                
+                // make a tetrahedron and place it at the anchor point
+                auto make_a_tet = [&](G4ThreeVector p1, G4ThreeVector p2, G4ThreeVector p3)
+                {
+                    // p[i] - points of the tetrahedron relative to anchor
+                    G4VSolid* RTet = new G4Tet("RTet", G4ThreeVector {0, 0, 0}, p1, p2, p3, 0);
+                    G4LogicalVolume* RTetLogicVolume = new G4LogicalVolume(RTet, GroundMat, "RTet");
+                    new G4PVPlacement(0,               // no rotation
+                            G4ThreeVector((2 * anchorx - iaxis) * Pnt_Sep /2, (2 * anchory - jaxis) * Pnt_Sep /2, DetectorDepth + RMins[i][j]),
+                            RTetLogicVolume,
+                            "RTet",         // its name
+                            logicWorld,  // its mother  volume
+                            false,           // no boolean operations
+							100 * i + j);
+							// 0);
+                };
+                
+                int n = 0;
+                
+//                auto check_volume = [&](G4ThreeVector p2, G4ThreeVector p3, G4ThreeVector p4)
+//                {
+//                    G4double signed_vol=p2.cross(p3).dot(p4);
+//
+//                    for (int k = 1; k < 4; k++)
+//
+//                }
+                
+                // x adjascent
+                if  (Relief[i+signx][j] != RMins[i][j])
+                {
+//                    G4ThreeVector P1 = G4ThreeVector(signx * Pnt_Sep, 0, 0);
+//                    G4ThreeVector P2 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, Relief[i+signx][j+signy]-RMins[i][j]);
+//                    G4ThreeVector P3 = G4ThreeVector(signx * Pnt_Sep, 0, Relief[i+signx][j]-RMins[i][j]);
+                    
+                    G4ThreeVector P1 = G4ThreeVector(signx * Pnt_Sep, 0, 0);
+                    G4ThreeVector P2 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, Relief[anchorx+signx][anchory+signy]-RMins[i][j]);
+                    G4ThreeVector P3 = G4ThreeVector(signx * Pnt_Sep, 0, Relief[anchorx+signx][anchory]-RMins[i][j]);
+                    
+                    if (P1.cross(P2).dot(P3) != 0.0)
+                    {
+                        make_a_tet(P1, P2, P3);
+                    
+                        n++;
+                    }
+                }
+                // y adjascent
+                if  (Relief[i][j+signy] != RMins[i][j])
+                {
+//                    G4ThreeVector P1 = G4ThreeVector(0,signy * Pnt_Sep, 0);
+//                    G4ThreeVector P2 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, Relief[i+signx][j+signy]-RMins[i][j]);
+//                    G4ThreeVector P3 = G4ThreeVector(0, signy * Pnt_Sep, Relief[i][j+signy]-RMins[i][j]);
+                    
+                    G4ThreeVector P1 = G4ThreeVector(0,signy * Pnt_Sep, 0);
+                    G4ThreeVector P2 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, Relief[anchorx+signx][anchory+signy]-RMins[i][j]);
+                    G4ThreeVector P3 = G4ThreeVector(0, signy * Pnt_Sep, Relief[anchorx][anchory+signy]-RMins[i][j]);
+                    
+                    if (P1.cross(P2).dot(P3) != 0.0)
+                    {
+                        make_a_tet(P1, P2, P3);
+                        
+                        n++;
+                    }
+                }
+                // across
+                if  (Relief[i+signy][j+signx] != RMins[i][j])
+                {
+//                    // across and x adjascent
+//                    G4ThreeVector P1 = G4ThreeVector(signx * Pnt_Sep, 0, 0);
+//                    G4ThreeVector P2 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, 0);
+//                    G4ThreeVector P3 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, Relief[i+signx][j+signy]-RMins[i][j]);
+//
+//                    // across and y adjascent
+//                    G4ThreeVector P4 = G4ThreeVector(0,signy * Pnt_Sep, 0);
+//                    G4ThreeVector P5 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, 0);
+//                    G4ThreeVector P6 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, Relief[i+signx][j+signy]-RMins[i][j]);
+
+                    // across and x adjascent
+                    G4ThreeVector P1 = G4ThreeVector(signx * Pnt_Sep, 0, 0);
+                    G4ThreeVector P2 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, 0);
+                    G4ThreeVector P3 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, Relief[anchorx+signx][anchory+signy]-RMins[i][j]);
+                    
+                    // across and y adjascent
+                    G4ThreeVector P4 = G4ThreeVector(0,signy * Pnt_Sep, 0);
+                    G4ThreeVector P5 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, 0);
+                    G4ThreeVector P6 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, Relief[anchorx+signx][anchory+signy]-RMins[i][j]);
+                    
+                    if (P1.cross(P2).dot(P3) != 0.0 and P4.cross(P5).dot(P6) != 0.0)
+                    {
+                        make_a_tet(P1, P2, P3);
+                        
+                        make_a_tet(P4, P5, P6);
+                        
+                        n++;
+                    }
+                }
+                // cap
+                if (n > 0)
+                {
+//                    G4ThreeVector P1 = G4ThreeVector(0, signy * Pnt_Sep, Relief[i][j+signy]-RMins[i][j]);
+//                    G4ThreeVector P2 = G4ThreeVector(signx * Pnt_Sep, 0, Relief[i+signx][j]-RMins[i][j]);
+//                    G4ThreeVector P3 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, Relief[i+signx][j+signy]-RMins[i][j]);
+                    
+                    G4ThreeVector P1 = G4ThreeVector(0, signy * Pnt_Sep, Relief[anchorx][anchory+signy]-RMins[i][j]);
+                    G4ThreeVector P2 = G4ThreeVector(signx * Pnt_Sep, 0, Relief[anchorx+signx][anchory]-RMins[i][j]);
+                    G4ThreeVector P3 = G4ThreeVector(signx * Pnt_Sep, signy * Pnt_Sep, Relief[anchorx+signx][anchory+signy]-RMins[i][j]);
+                    
+                    if (P1.cross(P2).dot(P3) != 0.0)
+                    {
+                        //make_a_tet(P1, P2, P3);
+                    }
+                }
+            };
+            
+            // Finds lowest data point to anchor tetrahedra
+            if (Relief[i][j] == RMins[i][j])
+            {
+                    int Anchorx = i; // ----remove anchor varaibles
+                    int Anchory = j;
+                    int Signx = 1.0;
+                    int Signy = 1.0;
+                    
+                    make_tets(Anchorx, Anchory, Signx, Signy);
+            }
+            else if (Relief[i+1][j] == RMins[i][j])
+            {
+                int Anchorx = i + 1;
+                int Anchory = j;
+                int Signx = - 1.0;
+                int Signy = 1.0;
+                
+                make_tets(Anchorx, Anchory, Signx, Signy);
+            }
+            else if (Relief[i][j+1] == RMins[i][j])
+            {
+                int Anchorx = i;
+                int Anchory = j + 1;
+                int Signx = 1.0;
+                int Signy = - 1.0;
+                
+                make_tets(Anchorx, Anchory, Signx, Signy);
+            }
+            else
+            {
+                int Anchorx = i + 1;
+                int Anchory = j + 1;
+                int Signx = - 1.0;
+                int Signy = - 1.0;
+                
+                make_tets(Anchorx, Anchory, Signx, Signy);
+            }/////////////
+        }
+    }
+
+
 	//--------- Visualization attributes -------------------------------
 	G4VisAttributes* BoxVisAtt = new G4VisAttributes(G4Colour(1.0, 1.0, 1.0));
 	logicWorld->SetVisAttributes(BoxVisAtt);
@@ -379,14 +557,6 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	G4VisAttributes* upper_VisAtt = new G4VisAttributes(col);
 	logic_upper_plane->SetVisAttributes(upper_VisAtt);
 
-	col = G4Colour(0.0, 0.69, 0.94);
-	G4VisAttributes* UBox_VisAtt = new G4VisAttributes(col);
-	UBoxLogicVolume->SetVisAttributes(UBox_VisAtt);
-
-	col = G4Colour(0.518, 0.235, 0.047);
-	G4VisAttributes* GND_VisAtt = new G4VisAttributes(col);
-	logicGround->SetVisAttributes(GND_VisAtt);
-
 	col = G4Colour(1.0, 0.0, 0.0);
 	G4VisAttributes* lower_VisAtt = new G4VisAttributes(col);
 	logic_lower_plane->SetVisAttributes(lower_VisAtt);
@@ -395,5 +565,6 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
 	G4VisAttributes* Trigger_VisAtt = new G4VisAttributes(col);
 	LowerTrigLogicVolume->SetVisAttributes(Trigger_VisAtt);
 	UpperTrigLogicVolume->SetVisAttributes(Trigger_VisAtt);
+	//RBoxLogicVolume->SetVisAttributes(Trigger_VisAtt);
 	return physiWorld;
 }

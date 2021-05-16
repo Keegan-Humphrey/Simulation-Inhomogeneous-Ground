@@ -19,47 +19,31 @@ from time import time, asctime
 
 
 alpha = [0] #[deg] x, y, z axis rotations
-beta = np.round([180 * mult * np.arccos(0.25) / np.pi for mult in [-1,1]], 1) #[deg]
-#beta = [0] #[deg]
+beta = [0] #[deg]
 gamma = [0] #[deg]
 
-Radius = [20] #[m] ~ distance from origin
+Det_Position = [[0,0]] #[cm] (x,y)
+Depth = [30] #[m] z
 
-#Theta = np.round(np.pi / 2 * np.array([0, 1, 2, 3, 4]) / 10, 2) #[rad] polar angle
-#Theta = np.round([0], 2)
-Theta = np.round(np.pi * beta / 180,1) #[rad]
+Seperation = [25] #[cm]
 
-Seperation = [30] #[cm]
-#Seperation = [40] #[cm] seperation of the detector planes
-
-Events = int(5e5)
-#Events = int(5e6)
+Events = int(1e4)
 dump(Events, 'Events.joblib')
 
-Ubox_Material = ['BMF', 'Air', 'GroundMat', 'Vacuum'][0]
-Ubox_dims = [1, 100, 0.5] # [m] (x, y, z) half dimensions
-Ubox_location = [[5,0,1],[-5,0,1],[10,0,1],[-10,0,1]] #[m] (x,y,z)
-
+Ubox_Material_real = ['BMF', 'Air', 'GroundMat', 'Vacuum'][0]
+Ubox_Material_sky = ['BMF', 'Air', 'GroundMat', 'Vacuum'][2]
+Ubox_dims = [1, 1, 1] # [m] (x, y, z) half dimensions
+Ubox_location = [[0,0,10]] #[m] (x,y,-z) from surface centre
+        
 Inhomogeneous = True # whether or not landscape is added
-Landscape_material = ['BMF', 'GroundMat'][1]
+                     # -> depricated, no longer affects simulation
+                     
+Landscape_material = ['BMF', 'GroundMat','Air','Vacuum'][1]
+GroundMaterial = ['BMF', 'GroundMat','Air','Vacuum'][1]
 
-
-
-#%%
-# Relief Data
-
-#dim = 60
-#
-#x = np.arange(1,dim+1).reshape(dim,1)
-#y = np.arange(1,dim+1).reshape(1,dim)
-#X,Y = np.meshgrid(x,y)
-#
-#Z = 25 * np.exp(-((X-25)**2 + (Y-25)**2)/5) + 25 * np.exp(-(((X-35)**2 + (Y-35)**2)/5))
-#
-#Z = np.zeros((dim,dim))
-#Z[30:35,30:35] = 5 * np.ones((5,5))
-
-
+chain = True # whether or not bash scripts are chained
+            # set as false to check visualisation before running
+            # a large data set
 
 transverse_scale = 10 #[m] the seperation between adjascent points in x and y
 
@@ -119,74 +103,21 @@ def WriteSource(fName, Seperation, Depth, X, Y, Real, Alpha, Beta, Gamma, boxloc
     g_lines[64] = 'G4double UD_Det_beta = {}*deg; \n'.format(Beta)
     g_lines[65] = 'G4double UD_Det_gamma = {}*deg; \n'.format(Gamma)
     
+    g_lines[216] = '\tG4LogicalVolume* logicGround = new G4LogicalVolume(solidGround, {}, "HomoGround"); \n'.format(GroundMaterial)
     
-    g_lines[217] = '\tG4double UBoxHight = %s*m; \n'%(Ubox_dims[2])
-    g_lines[218] = '\tG4VSolid* UBox = new G4Box("UBox", %s*m, %s*m, UBoxHight); \n'%(Ubox_dims[0], Ubox_dims[1])
-    
-    if Inhomogeneous:
-        LandscapeList = ['\t \t /* Landscape Volume */ \n ', \
-                        '\t G4VSolid* solidLandscape = new G4Box("Landscape", UD_World_sizeX, UD_World_sizeY, (UD_World_sizeZ - DetectorDepth) / 2.0); \n ', \
-                        '\t G4LogicalVolume* logicLandscape = new G4LogicalVolume(solidLandscape, Vacuum, "Landscape"); \n ', \
-                        '\t  \n ', \
-                        '\t new G4PVPlacement(0,               // no rotation \n ', \
-                        '\t     G4ThreeVector(0.0, 0.0, DetectorDepth + (UD_World_sizeZ - DetectorDepth) / 2.0), //above Homogeneous ground \n ', \
-                        '\t     logicLandscape, \n ', \
-                        '\t     "Landscape",         // its name \n ', \
-                        '\t     logicWorld,  // its mother  volume \n ', \
-                        '\t     false,           // no boolean operations \n ', \
-                        '\t     0); \n ', \
-                        '\t  \n ', \
-                        '\t  \n ', \
-                        '\t G4double RBox_1_height = 1 * m; \n ', \
-                        '\t G4VSolid* RBox_1 = new G4Box("RBox_1", Pnt_Sep/2.0, Pnt_Sep/2.0, RBox_1_height/2.0); \n ', \
-                        '\t G4LogicalVolume* RBox_1_LV = new G4LogicalVolume(RBox_1, %s, "RBox_1"); \n '%(Landscape_material), \
-                        '\t  \n ', \
-                        '\t int RBox_copy = 0; \n ', \
-                        '\t  \n ', \
-                        '\t for (int i = 0; i < iaxis - 1; i++) \n ', \
-                        '\t { \n ', \
-                        '\t     for (int j = 0; j < jaxis - 1; j++) \n ', \
-                        '\t     { \n ', \
-                        '\t         if (RMins[i][j] >= 1.0) \n ', \
-                        '\t         { \n ', \
-                        '\t             for (int k = 0; k < RMins[i][j]; k++) \n ', \
-                        '\t             { \n ', \
-                        '\t                 G4RotationMatrix* rotBox_null = new G4RotationMatrix(); \n', \
-                        '\t                 rotBox_null->rotateX(0.0*deg); \n', \
-                        '\t                 G4ThreeVector RBox_Centre = G4ThreeVector((1-iaxis) * Pnt_Sep /2.0 + Pnt_Sep * i, (1-jaxis) * Pnt_Sep /2.0 + Pnt_Sep * j, (0.5 + k) * m - (UD_World_sizeZ - DetectorDepth) / 2.0); \n ', \
-                        '\t                 new G4PVPlacement(rotBox_null,               // no rotation \n ', \
-                        '\t                         RBox_Centre, \n', \
-                        '\t                         RBox_1_LV, \n ', \
-                        '\t                         "RBox_1",         // its name \n ', \
-                        '\t                         logicLandscape,  // its mother  volume \n ', \
-                        '\t                         false,           // no boolean operations \n ', \
-                        '\t                         RBox_copy); \n ', \
-                        '\t  \n ', \
-                        '\t                 RBox_copy++; \n ', \
-                        '\t            } \n ', \
-                        '\t            G4cout << G4endl << RMins[i][j] * m - (UD_World_sizeZ - DetectorDepth) / 2.0 << " mm is local height " << (1-iaxis) * Pnt_Sep /2.0 + Pnt_Sep * i << ", " << (1-jaxis) * Pnt_Sep /2.0 + Pnt_Sep * j << " mm are the x,y positions " << G4endl; \n ', \
-                        '\t  \n ', \
-                        '\t         } \n ', \
-                        '\t     } \n ', \
-                        '\t } \n ', \
-                        '\t  \n ', \
-                        '\t G4cout << G4endl << Pnt_Sep/2.0 << "  " << Pnt_Sep/2.0 << "  " << RBox_1_height /2.0 << G4endl << G4endl; \n ', \
-                        '\t //G4cout << G4endl << RBox_copy << " boxes were placed to create the Landscape" << G4endl << G4endl; \n ', \
-                        '\t G4cout << G4endl << (UD_World_sizeZ - DetectorDepth) / 2.0 << " mm is the half height of the sky" << G4endl << G4endl; \n ' ]
-        
-        LandscapeList.reverse()
-        [g_lines.insert(381,Str) for Str in LandscapeList]
+    g_lines[227] = '\tG4double UBoxHight = %s*m; \n'%(Ubox_dims[2])
+    g_lines[228] = '\tG4VSolid* UBox = new G4Box("UBox", %s*m, %s*m, UBoxHight); \n'%(Ubox_dims[0], Ubox_dims[1])
     
     if Real:
-        g_lines[219] = '\tG4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, %s, "UBox");\n'%(Ubox_Material)
-        g_lines[220] = '\t//G4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, GroundMat, "UBox");\n'
+        g_lines[230] = '\tG4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, %s, "UBox");\n'%(Ubox_Material_real)
+        g_lines[231] = '\t//G4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, %s, "UBox");\n'%(Ubox_Material_sky)
     
     else:
-        g_lines[219] = '\t//G4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, %s, "UBox");\n'%(Ubox_Material)
-        g_lines[220] = '\tG4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, GroundMat, "UBox");\n'
+        g_lines[230] = '\t//G4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, %s, "UBox");\n'%(Ubox_Material_real)
+        g_lines[231] = '\tG4LogicalVolume* UBoxLogicVolume = new G4LogicalVolume(UBox, %s, "UBox");\n'%(Ubox_Material_sky)
     
-    g_lines[224] = '\tG4double UboxDepth = {} * m;'.format(boxloc[2])
-    g_lines[227] = '\tG4ThreeVector({} * m, {} * m, DetectorDepth / 2 - UBoxHight / 2 - UboxDepth),'.format(boxloc[0],boxloc[1])
+    #g_lines[224] = '\tG4double UboxDepth = {} * m;'.format(boxloc[2])
+    g_lines[235] = '\tG4ThreeVector({} * m, {} * m, DetectorDepth / 2 - UBoxHight - {} * m),'.format(*boxloc)
     
     g_lines.insert(43, '#include "Relief.hh" \n \n')
     g_lines.insert(43, '#include "G4Tet.hh" \n \n')
@@ -226,51 +157,55 @@ def WriteHeader(Data):
     
     g_lines.append('int iaxis = {}; \n'.format(Shape[0]))
     g_lines.append('int jaxis = {}; \n \n'.format(Shape[1]))
-    g_lines.append('G4double max_landscape_height = {}; \n \n'.format(np.amax(Z)))
+    g_lines.append('G4double max_landscape_height = {} * m; \n \n'.format(np.amax(Z)))
     
-    #paste data
+    
+    
+    #paste data ----------------------------------------------------------#
     g_lines.append('\n std::array<std::array<G4double, %s>, %s> Relief = {{ \n'%(Shape[1],Shape[0]))
     
     for i in range(Shape[0]-1):
         Str = '{{'
 
         for j in range(Shape[1]-1):
-            Str += str(Data[i,j]) + ', '
+            Str += str(Data[i,j]) + ' * m, '
 
-        Str += str(Data[i,Shape[1]-1]) + '}}, \n'
+        Str += str(Data[i,Shape[1]-1]) + ' * m}}, \n'
 
         g_lines.append(Str)
 
     Str = '{{'
 
     for j in range(Shape[1]-1):
-        Str += str(Data[i,j]) + ', '
+        Str += str(Data[i,j]) + ' * m, '
 
-    Str += str(Data[i,Shape[1]-1]) + '}} \n'
+    Str += str(Data[i,Shape[1]-1]) + ' * m}} \n'
 
     g_lines.append(Str)
 
     g_lines.append('}}; \n \n')
 
-    #paste minima
+
+
+    #paste minima ----------------------------------------------------------#
     g_lines.append('\n std::array<std::array<G4double, %s>, %s> RMins = {{ \n'%(Shape[1]-1,Shape[0]-1))
 
     for i in range(Shape[0]-2):
         Str = '{{'
 
         for j in range(Shape[1]-2):
-            Str += str(Mins[i,j]) + ', '
+            Str += str(Mins[i,j]) + ' * m, '
 
-        Str += str(Mins[i,Shape[1]-2]) + '}}, \n'
+        Str += str(Mins[i,Shape[1]-2]) + ' * m}}, \n'
 
         g_lines.append(Str)
 
     Str = '{{'
 
     for j in range(Shape[1]-2):
-        Str += str(Mins[i,j]) + ', '
+        Str += str(Mins[i,j]) + ' * m, '
 	
-    Str += str(Mins[i,Shape[1]-2]) + '}} \n'
+    Str += str(Mins[i,Shape[1]-2]) + ' * m}} \n'
 
     g_lines.append(Str)
 
@@ -280,7 +215,8 @@ def WriteHeader(Data):
     g.writelines(g_lines)
 
     g.close()
-
+    
+    # ----------------------------------------------------------#
     
     f = open('Relief.hh','w+')
     
@@ -297,6 +233,7 @@ def WriteHeader(Data):
     f.writelines(f_lines)
     
     f.close()
+    
     
 
 def WriteCommands(src_name, ex_name, dir_name, row_name, date_dir): 
@@ -361,14 +298,14 @@ def Write_Description(cwd):
     f = open('DESCRIPTION.txt','w+')
     
     f.writelines(['The Following describes the data in ../{}/ \n\n\n'.format(cwd),
-                  'The distance from the origin is: \t {} m \n\n'.format(Radius),
-                  'The angle of the detector relative to the vertical is: \t {} rad \n\n'.format(*Theta),
+                  'The depth of the detector from the surface minimum is: \t {} m \n\n'.format(Depth),
+                  'The x-y position of the detector is: \t {} rad \n\n'.format(Det_Position),
                   'The seperation of the detector planes is: \t {} cm \n\n'.format(Seperation),
                   'The euler angles of the detector are: \t {}, {}, {} deg \n\n'.format(alpha,beta,gamma),
                   'The number of events each run is: \t {} \n\n'.format(Events),
-                  'The material of the box is: \t {} \n\n'.format(Ubox_Material),
+                  'The material of the box is: \t {} \n\n'.format(Ubox_Material_real),
                   'The dimensions of the box are: \t ({}, {}, {}) m \n\n'.format(*Ubox_dims),
-                  'The depth of the box is: \t {} m \n\n'.format(Ubox_location),
+                  'The location of the box is: \t {} m \n\n'.format(Ubox_location),
                   'The inhomogeneous landscape {} simulated \n\n'.format(["wasn't",'was'][Inhomogeneous]),
                   'The material of the landscape {} {} \n\n'.format(['would have been','is'][Inhomogeneous],Landscape_material)])
         
@@ -376,7 +313,7 @@ def Write_Description(cwd):
     
     
 
-def CreateSource(radius, theta, seperation):
+def CreateSource(det_position, depth, seperation):
     '''
     Write detector construction files for all combinations of the elements in
     radius theta and seperation for both real and sky geometries
@@ -392,16 +329,6 @@ def CreateSource(radius, theta, seperation):
     output:
         None
     '''
-#    r = open('r2.in','w+') #beware!!! using the same seed for real and sky
-#    
-#    r.writelines(['/run/initialize \n \n', \
-#                  '/SetSeed/set {} \n \n'.format(''.join(random.choices(string.digits, k=10))), \
-#                  '/gun/particle mu- \n \n', \
-#                  '#/vis/scene/endOfEventAction accumulate \n \n', \
-#                  '/run/beamOn {} \n \n'.format(Events)])
-#    
-#    r.close()
-    
     
     current_date_time = asctime().replace(' ','_').replace(':','-')
     
@@ -419,74 +346,82 @@ def CreateSource(radius, theta, seperation):
                   'mkdir ../Executables/{} \n'.format(current_date_time), \
                   'mkdir ../RowData/{} \n'.format(current_date_time), \
                   'mkdir {} \n \n'.format(current_date_time), \
+                  'cp DESCRIPTION.txt ../RowData/{} \n \n'.format(current_date_time), \
                   'mv DESCRIPTION.txt ../Training/{} \n \n'.format(current_date_time), \
+                  'mv Parameters.joblib ../RowData \n \n', \
+                  'mv Events.joblib ../Executables \n \n', \
+                  'mv time.joblib ../RowData \n \n',
                   'mv DC*.cc ./{} \n'.format(current_date_time), \
                   'cd ./{} \n'.format(current_date_time)])
                   
     g.writelines(['#!/bin/bash \n \n', \
-                  'mv Parameters.joblib ../RowData \n \n', \
-                  'mv Events.joblib ../Executables \n \n', \
-                  'mv time.joblib ../RowData \n \n', \
                   'cd ../Executables \n \n']) #, \
-                  #"alias python='/tomerv/SENSEI1/Keegan/Python-3.9.0/python' \n \n"])
-    
+                  
     f.close()
     g.close()
     
     Parameters = []
     
-    for r in radius:
-        for t in theta:
+    for r in det_position:
+        for d in depth:
             for sep in seperation:
                 for a in alpha:
                     for b in beta:
                         for c in gamma:
                             for loc in Ubox_location:
                                 
-                                Parameters.append(np.array([r,t,sep,a,b,c,loc],dtype=object))
+                                Parameters.append(np.array([r,d,sep,a,b,c,loc],dtype=object))
                                 
-                                WriteSource('DCR_{}m_{}rad_{}cm_{}a_{}b_{}c_{}m.cc'.format(*Parameters[-1]).replace(' ',''), 
+                                WriteSource('DCR_{}cm_{}m_{}cm_{}a_{}b_{}c_{}m.cc'.format(*Parameters[-1]).replace(' ',''),
                                             sep, 
-                                            np.round(np.cos(t)*r,2),
-                                            np.round(np.sin(t)*r*100),
-                                            0,
+                                            d,
+                                            r[0],
+                                            r[1],
                                             True,
                                             a,b,c,loc)
                                 
-                                WriteSource('DCS_{}m_{}rad_{}cm_{}a_{}b_{}c_{}m.cc'.format(*Parameters[-1]).replace(' ',''),
+                                WriteSource('DCS_{}cm_{}m_{}cm_{}a_{}b_{}c_{}m.cc'.format(*Parameters[-1]).replace(' ',''),
                                             sep, 
-                                            np.round(np.cos(t)*r,2),
-                                            np.round(np.sin(t)*r*100),
-                                            0,
+                                            d,
+                                            r[0],
+                                            r[1],
                                             False,
                                             a,b,c,loc)
                                 
-                                WriteCommands('DCR_{}m_{}rad_{}cm_{}a_{}b_{}c_{}m.cc'.format(*Parameters[-1]).replace(' ',''),
-                                              'MuonsR_{}m_{}rad_{}cm_{}a_{}b_{}c_{}m'.format(*Parameters[-1]).replace(' ',''),
+                                WriteCommands('DCR_{}cm_{}m_{}cm_{}a_{}b_{}c_{}m.cc'.format(*Parameters[-1]).replace(' ',''),
+                                              'MuonsR_{}cm_{}m_{}cm_{}a_{}b_{}c_{}m'.format(*Parameters[-1]).replace(' ',''),
                                               'Source', 
-                                              'RDR_{}m_{}rad_{}cm_{}a_{}b_{}c_{}m.out'.format(*Parameters[-1]).replace(' ',''),
+                                              'RDR_{}cm_{}m_{}cm_{}a_{}b_{}c_{}m.out'.format(*Parameters[-1]).replace(' ',''),
                                               current_date_time)
                                               
                                 
-                                WriteCommands('DCS_{}m_{}rad_{}cm_{}a_{}b_{}c_{}m.cc'.format(*Parameters[-1]).replace(' ',''), 
-                                              'MuonsS_{}m_{}rad_{}cm_{}a_{}b_{}c_{}m'.format(*Parameters[-1]).replace(' ',''), 
+                                WriteCommands('DCS_{}cm_{}m_{}cm_{}a_{}b_{}c_{}m.cc'.format(*Parameters[-1]).replace(' ',''),
+                                              'MuonsS_{}cm_{}m_{}cm_{}a_{}b_{}c_{}m'.format(*Parameters[-1]).replace(' ',''),
                                               'Source', 
-                                              'RDS_{}m_{}rad_{}cm_{}a_{}b_{}c_{}m.out'.format(*Parameters[-1]).replace(' ',''),
+                                              'RDS_{}cm_{}m_{}cm_{}a_{}b_{}c_{}m.out'.format(*Parameters[-1]).replace(' ',''),
                                               current_date_time)
-                                
-                                #r,t,sep,a,b,c,dep),
        
     f = open('Compile','a')
     g = open('Run','a')
     
-    f.writelines(['cd ../ \n', \
-                  #'cd ../Source \n',
-                  'bash Run']) #Chains together the command scripts, useful for batch jobs
+    if chain:
+        f.writelines(['cd ../ \n', \
+                      'cd ../Source \n',
+                      'bash Run']) #Chains together the command scripts, useful for batch jobs
+    else:
+        f.writelines(['cd ../ \n', \
+                      'cd ../Source \n'])
         
     g.writelines(['mv Muons* ./{} \n'.format(current_date_time), \
                   'cd ../RowData \n \n', \
                   'python ClusterAnalysis.py \n \n', \
-                  'mv ./{}/RD*.joblib ../Training/{} \n \n'.format(current_date_time,current_date_time)])
+                  'mv ./{}/RD*.joblib ../Training/{} \n \n'.format(current_date_time,current_date_time), \
+                  'rm ../RowData/Parameters.joblib ../Executables/Events.joblib \n \n', \
+                  'rm ../Executables/inputCurrent ../Executables/r2.in \n \n', \
+                  'mv ../Executables/Cts_dx_dy.out ../Executables/{} \n \n'.format(current_date_time), \
+                  'rm -rf ../build \n \n', \
+                  'cp time.joblib ../RowData/{} \n \n'.format(current_date_time), \
+                  'mv time.joblib ../Training/{} \n \n'.format(current_date_time)])
                   #'python Plot.py'])
     
     f.close()    
@@ -497,7 +432,7 @@ def CreateSource(radius, theta, seperation):
     
     
 
-CreateSource(Radius, Theta, Seperation)
+CreateSource(Det_Position, Depth, Seperation)
 WriteHeader(Z)
 
 
