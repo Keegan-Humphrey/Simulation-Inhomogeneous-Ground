@@ -1,0 +1,26 @@
+/control/verbose 2
+/run/verbose 1
+/tracking/verbose 1
+
+/SetSeed/set 42
+
+/run/initialize
+/vis/scene/create
+/vis/scene/add/volume world
+#
+# Open a HepRep version 2 file suitable for viewing in WIRED.
+/vis/open HepRepFile
+#/vis/open DAWNFILE
+#
+# Output an empty detector
+/vis/viewer/flush
+/tracking/storeTrajectory 1
+/vis/scene/endOfEventAction accumulate
+/vis/scene/add/trajectories
+
+/gun/particle mu-
+/gun/energy 14 GeV
+
+#/vis/scene/endOfEventAction accumulate
+/run/beamOn 100
+
