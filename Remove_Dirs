@@ -1,0 +1,20 @@
+#!/bin/bash
+
+#echo "Gimme a Dir:"
+
+#read dir
+
+#dir=$1
+
+#if [$1 = '--help']
+#then 
+#	echo "Give me an unused directory to remove from all of Source, Executables, RowData, and Training."
+#elif [-e $1] 
+#then
+
+for dir in "$@"
+do
+	rm -rf ./Source/"$dir" ./RowData/"$dir" ./Executables/"$dir" ./Training/"$dir"
+done
+
+#fi
